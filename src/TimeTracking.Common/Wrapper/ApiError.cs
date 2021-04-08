@@ -63,7 +63,7 @@ namespace TimeTracking.Common.Wrapper
         WorkLogCreationFailed,
         [Description("WorkLog not found")]
         WorkLogNotFound,
-        [Description("Refresh token revoaktion failed")]
+        [Description("Refresh token revokation failed")]
         RefreshTokenRevocationFailed,
         [Description("Failed to send email")]
         EmailSendFailed,
@@ -71,5 +71,9 @@ namespace TimeTracking.Common.Wrapper
         ClientError,
         [Description("An user to role failed")]
         AddToRoleFailed,
+        [Description("Project creation  failed")]
+        ProjectCreationFailed,
+        [Description("Team creation  failed")]
+        TeamCreationFailed,
     }
 }

@@ -8,12 +8,18 @@
 
     <ItemGroup>
         <PackageReference Include="AutoFixture.AutoMoq" Version="4.15.0" />
+        <PackageReference Include="AutoMockHelper" Version="1.1.2" />
         <PackageReference Include="FluentAssertions" Version="5.10.3" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="5.0.4" />
+        <PackageReference Include="MockQueryable.Moq" Version="5.0.0" />
         <PackageReference Include="Moq" Version="4.15.0" />
         <PackageReference Include="NUnit" Version="3.12.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="3.16.1" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Identity\TimeTracking.Identity.BL.Impl\TimeTracking.Identity.BL.Impl.csproj" />
     </ItemGroup>
 
 </Project>

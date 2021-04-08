@@ -58,7 +58,7 @@ namespace TimeTracking.Bl.Impl.Services
                 {
                     StatusCode = 400,
                     IsSuccess = false,
-                    ResponseException = new ApiError(ErrorCode.IssueCreationFailed, ErrorCode.IssueCreationFailed.GetDescription())
+                    ResponseException = new ApiError(ErrorCode.TeamCreationFailed, ErrorCode.TeamCreationFailed.GetDescription())
                 };
             }
             catch (Exception ex)
@@ -71,18 +71,26 @@ namespace TimeTracking.Bl.Impl.Services
 
         public async Task<ApiResponse<TeamDetailsDto>> GetTeamById(Guid teamId)
         {
-            var teamFounded = await _teamRepository.GetByIdWithDetails(teamId);
-            if (teamFounded == null)
+            try
             {
-                _logger.LogWarning("Failed to found team by id {0}", teamId);
-                return new ApiResponse<TeamDetailsDto>()
+                var teamFounded = await _teamRepository.GetByIdWithDetails(teamId);
+                if (teamFounded == null)
                 {
-                    StatusCode = 400,
-                    IsSuccess = false,
-                    ResponseException = new ApiError(ErrorCode.TeamNotFound, ErrorCode.TeamNotFound.GetDescription())
-                };
+                    _logger.LogWarning("Failed to found team by id {0}", teamId);
+                    return new ApiResponse<TeamDetailsDto>()
+                    {
+                        StatusCode = 400,
+                        IsSuccess = false,
+                        ResponseException = new ApiError(ErrorCode.TeamNotFound, ErrorCode.TeamNotFound.GetDescription())
+                    };
+                }
+                return new ApiResponse<TeamDetailsDto>(_teamDetailsMapper.MapToModel(teamFounded));
             }
-            return new ApiResponse<TeamDetailsDto>(_teamDetailsMapper.MapToModel(teamFounded));
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "An error occured while getting team by id {0} ", teamId);
+                return ApiResponse<TeamDetailsDto>.InternalError();
+            }
         }
 
         public async Task<ApiPagedResponse<TeamDetailsDto>> GetAllTeamAsync(PagedRequest request)

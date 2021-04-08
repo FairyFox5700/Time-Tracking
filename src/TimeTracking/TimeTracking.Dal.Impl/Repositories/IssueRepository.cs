@@ -18,10 +18,12 @@ namespace TimeTracking.Dal.Impl.Repositories
         public Task<Issue> GetIssueWithDetails(Guid id)
         {
             var query = _dbContext.Issues
+                .Where(e => e.Id.Equals(id))
+                .Include(e => e.WorkLogs)
                 .Include(e => e.Milestone)
                 .Include(e => e.TimeTrackingUserReporter)
                 .Include(e => e.TimeTrackingUserAssigned)
-                .Include(e => e.WorkLogs);
+               ;
 
             return query.FirstOrDefaultAsync();
         }

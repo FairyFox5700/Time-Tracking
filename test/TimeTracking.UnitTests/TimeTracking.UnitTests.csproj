@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\src\TimeTracking\TimeTracking.Bl.Impl\TimeTracking.Bl.Impl.csproj" />
       <ProjectReference Include="..\..\src\TimeTracking\TimeTracking.Dal.Impl\TimeTracking.Dal.Impl.csproj" />
     </ItemGroup>
 

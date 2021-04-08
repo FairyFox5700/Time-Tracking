@@ -7,6 +7,8 @@ namespace TimeTracking.Entities
 {
     public class Project : IKeyEntity<Guid>
     {
+
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }

@@ -8,11 +8,11 @@ using TimeTracking.Entities;
 
 namespace TimeTracking.Dal.Impl
 {
-    public class TimeTrackingDbContext : DbContext,IDbContext
+    public class TimeTrackingDbContext : DbContext, IDbContext
     {
         public TimeTrackingDbContext()
         {
-            
+
         }
         public TimeTrackingDbContext(DbContextOptions<TimeTrackingDbContext> options)
         : base(options)
@@ -29,27 +29,25 @@ namespace TimeTracking.Dal.Impl
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+
+
+
+
             modelBuilder.Entity<Issue>()
                 .HasKey(e => e.Id);
             modelBuilder.Entity<Issue>()
-                .HasMany(e => e.WorkLogs)
-                .WithOne();
-            modelBuilder.Entity<Issue>()
-                .HasOne(e => e.Milestone)
-                .WithOne()
-                .HasForeignKey<Issue>(e => e.MilestoneId);
-            modelBuilder.Entity<Issue>()
-                .HasOne(e => e.Project)
-                .WithMany()
-                .OnDelete(DeleteBehavior.NoAction);
-            modelBuilder.Entity<Issue>()
                 .HasOne(e => e.TimeTrackingUserAssigned)
-                .WithOne()
-                .OnDelete(DeleteBehavior.NoAction);
+                .WithMany(e => e.AssignedIssues)
+                .HasForeignKey(e => e.AssignedToUserId);
             modelBuilder.Entity<Issue>()
                 .HasOne(e => e.TimeTrackingUserReporter)
-                .WithOne()
-                .OnDelete(DeleteBehavior.NoAction);
+                .WithMany(e => e.ReportedIssues)
+                .HasForeignKey(e => e.ReportedByUserId);
+            modelBuilder.Entity<Issue>()
+                .HasMany(e => e.WorkLogs)
+                .WithOne(w => w.Issue)
+                .HasForeignKey(e => e.IssueId);
             modelBuilder.Entity<Issue>()
                 .Property(e => e.Status)
                 .HasConversion<string>();
@@ -57,10 +55,9 @@ namespace TimeTracking.Dal.Impl
             modelBuilder.Entity<Team>()
                 .HasKey(e => e.Id);
             modelBuilder.Entity<Team>()
-                .HasOne(e => e.Project)
-                .WithMany()
-                .HasForeignKey(e => e.ProjectId);
-
+                .HasMany(e => e.Users)
+                .WithOne(e => e.Team)
+                .HasForeignKey(e => e.TeamId);
 
             modelBuilder.Entity<Project>()
                 .HasKey(e => e.Id);
@@ -68,28 +65,24 @@ namespace TimeTracking.Dal.Impl
                 .HasIndex(e => e.Name)
                 .IsUnique(true);
             modelBuilder.Entity<Project>()
-                .HasMany(e => e.Teams)
-                .WithOne();
-            modelBuilder.Entity<Project>()
                 .HasMany(e => e.Issues)
-                .WithOne();
+                .WithOne(e => e.Project)
+                .HasForeignKey(e => e.ProjectId);
+            modelBuilder.Entity<Project>()
+                .HasMany(e => e.Teams)
+                .WithOne(e => e.Project)
+                .HasForeignKey(e => e.ProjectId);
             modelBuilder.Entity<Project>()
                 .HasMany(e => e.Milestones)
-                .WithOne();
+                .WithOne(e => e.Project)
+                .HasForeignKey(e => e.ProjectId);
 
             modelBuilder.Entity<Milestone>()
                 .HasKey(e => e.Id);
             modelBuilder.Entity<Milestone>()
                 .HasMany(e => e.Issues)
-                .WithOne();
-            modelBuilder.Entity<Milestone>()
-                .HasOne(e => e.Project)
-                .WithMany()
-                .HasForeignKey(e => e.ProjectId);
-            modelBuilder.Entity<Milestone>()
-                .HasOne(e => e.CreatedByUser)
-                .WithOne()
-                .OnDelete(DeleteBehavior.NoAction);
+                .WithOne(e => e.Milestone)
+                .HasForeignKey(e => e.MilestoneId);
             modelBuilder.Entity<Milestone>()
                 .Property(e => e.State)
                 .HasConversion<string>();
@@ -99,22 +92,19 @@ namespace TimeTracking.Dal.Impl
             modelBuilder.Entity<WorkLog>()
                 .HasIndex(e => e.UserId);
             modelBuilder.Entity<WorkLog>()
-                .HasOne(e => e.TimeTrackingUser)
-                .WithMany()
-                .OnDelete(DeleteBehavior.NoAction);
-            modelBuilder.Entity<WorkLog>()
-                .HasOne(e => e.Issue)
-                .WithMany()
-                .HasForeignKey(e => e.IssueId);
-            modelBuilder.Entity<WorkLog>()
                 .Property(e => e.ActivityType)
                 .HasConversion<string>();
 
             modelBuilder.Entity<TimeTrackingUser>()
                 .HasKey(e => e.Id);
             modelBuilder.Entity<TimeTrackingUser>()
-                .HasOne(e => e.Team)
-                .WithMany();
+                .HasMany(e => e.WorkLogs)
+                .WithOne(e => e.TimeTrackingUser)
+                .HasForeignKey(e => e.UserId);
+            modelBuilder.Entity<TimeTrackingUser>()
+                .HasMany(e => e.CreatedMilestones)
+                .WithOne(e => e.CreatedByUser)
+                .HasForeignKey(e => e.CreatedByUserId);
 
         }
 
@@ -138,12 +128,12 @@ namespace TimeTracking.Dal.Impl
 
         private void UpdateAuditableEntities()
         {
-            var added = ChangeTracker.Entries<IAuditable>().Where(E => E.State == EntityState.Added).ToList();
+            var added = ChangeTracker.Entries<IAuditable>().Where(k => k.State == EntityState.Added).ToList();
 
-            added.ForEach(E =>
+            added.ForEach(e =>
             {
-                E.Property(x => x.CreatedAt).CurrentValue = DateTimeOffset.UtcNow;
-                E.Property(x => x.CreatedAt).IsModified = true;
+                e.Property(x => x.CreatedAt).CurrentValue = DateTimeOffset.UtcNow;
+                e.Property(x => x.CreatedAt).IsModified = true;
             });
 
             var modified = ChangeTracker.Entries<IAuditable>().Where(entry => entry.State == EntityState.Modified).ToList();

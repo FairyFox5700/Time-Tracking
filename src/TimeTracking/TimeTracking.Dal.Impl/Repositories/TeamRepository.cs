@@ -13,11 +13,12 @@ namespace TimeTracking.Dal.Impl.Repositories
         {
         }
 
-        public Task<Team> GetByIdWithDetails(Guid teamId)
+        public async Task<Team> GetByIdWithDetails(Guid teamId)
         {
-            return _dbContext.Teams
-                .Include(e => e.Project)
-                .FirstOrDefaultAsync(e => e.Id == teamId);
+            var query = await _dbContext.Teams
+                                        .Include(e => e.Project)
+                                        .FirstOrDefaultAsync(e => e.Id == teamId);
+            return query;
         }
     }
 }

@@ -84,17 +84,25 @@ namespace TimeTracking.Bl.Impl.Services
 
         public async Task<ApiResponse<TimeTrackingUserDetailsDto>> GetUsersById(Guid userId)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null)
+            try
             {
-                return new ApiResponse<TimeTrackingUserDetailsDto>(new ApiError()
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null)
                 {
-                    ErrorCode = ErrorCode.UserNotFound,
-                    ErrorMessage = ErrorCode.UserNotFound.GetDescription(),
-                });
-            }
+                    return new ApiResponse<TimeTrackingUserDetailsDto>(new ApiError()
+                    {
+                        ErrorCode = ErrorCode.UserNotFound,
+                        ErrorMessage = ErrorCode.UserNotFound.GetDescription(),
+                    }, statusCode: 400);
+                }
 
-            return new ApiResponse<TimeTrackingUserDetailsDto>(_userDetailsMapper.MapToModel(user));
+                return new ApiResponse<TimeTrackingUserDetailsDto>(_userDetailsMapper.MapToModel(user));
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "An error occured while getting user by id {0} ", userId);
+                return ApiResponse<TimeTrackingUserDetailsDto>.InternalError();
+            }
         }
     }
 }

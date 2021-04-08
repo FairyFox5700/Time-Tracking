@@ -40,13 +40,13 @@ namespace TimeTracking.Bl.Impl.Services
             {
                 var entityToAdd = _projectMapper.MapToEntity(dto);
                 entityToAdd = await _projectRepository.AddAsync(entityToAdd);
-                if (entityToAdd != null) return new ApiResponse<ProjectDto>(_projectDetailsMapper.MapToModel(entityToAdd));
+                if (entityToAdd != null) return new ApiResponse<ProjectDto>(_projectMapper.MapToModel(entityToAdd));
                 _logger.LogWarning("Failed to create entity {0}", JsonConvert.SerializeObject(dto));
                 return new ApiResponse<ProjectDto>()
                 {
                     StatusCode = 400,
                     IsSuccess = false,
-                    ResponseException = new ApiError(ErrorCode.IssueCreationFailed, ErrorCode.IssueCreationFailed.GetDescription())
+                    ResponseException = new ApiError(ErrorCode.ProjectCreationFailed, ErrorCode.IssueCreationFailed.GetDescription())
                 };
             }
             catch (Exception e)

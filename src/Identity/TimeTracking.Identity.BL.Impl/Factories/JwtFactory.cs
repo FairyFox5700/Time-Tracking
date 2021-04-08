@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Principal;
@@ -20,6 +21,7 @@ using TimeTracking.Identity.Entities;
 using TimeTracking.Identity.Models;
 using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 
+[assembly: InternalsVisibleTo("Identity.UnitTests")]
 namespace TimeTracking.Identity.BL.Impl.Factories
 {
     internal sealed class JwtFactory : IJwtFactory

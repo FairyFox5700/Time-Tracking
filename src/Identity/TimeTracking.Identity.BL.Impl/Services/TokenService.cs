@@ -9,6 +9,7 @@ using TimeTracking.Common.Helpers;
 using TimeTracking.Common.Wrapper;
 using TimeTracking.Identity.BL.Abstract.Factories;
 using TimeTracking.Identity.BL.Abstract.Services;
+using TimeTracking.Identity.Dal.Abstract;
 using TimeTracking.Identity.Entities;
 using TimeTracking.Identity.Models.Requests;
 using TimeTracking.Identity.Models.Responses;
@@ -18,130 +19,151 @@ namespace TimeTracking.Identity.BL.Impl.Services
     public class TokenService : ITokenService
     {
         private readonly UserManager<User> _userManager;
+        private readonly IRefreshTokenRepository _refreshTokenRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IJwtFactory _jwtFactory;
+        private readonly ISystemClock _systemClock;
         private readonly ILogger<TokenService> _logger;
 
         public TokenService(UserManager<User> userManager,
+            IRefreshTokenRepository refreshTokenRepository,
+            IUserRepository userRepository,
             IJwtFactory jwtFactory,
+            ISystemClock systemClock,
             ILogger<TokenService> logger)
         {
             _userManager = userManager;
+            _refreshTokenRepository = refreshTokenRepository;
+            _userRepository = userRepository;
             _jwtFactory = jwtFactory;
+            _systemClock = systemClock;
             _logger = logger;
         }
 
         public async Task<AuthResponse> LoginAsync(TokenExchangeRequest request)
         {
-            var authResponse = new AuthResponse();
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
-                authResponse.Message = $"No Accounts Registered with {request.Email}.";
-                return authResponse;
+                return new AuthResponse()
+                {
+                    Message = $"No Accounts Registered with {request.Email}.",
+                };
             }
             // Only allow login if email is confirmed
             if (!user.EmailConfirmed)
             {
-                authResponse.Message = $"Current email {request.Email} is not confirmed.";
-                return authResponse;
+                return new AuthResponse()
+                {
+                    Message = $"Current email {request.Email} is not confirmed.",
+                };
             }
             // Used as user lock
             if (user.LockoutEnd >= DateTimeOffset.UtcNow)
             {
-                authResponse.Message = $"This account has been locked.";
-                return authResponse;
+                return new AuthResponse()
+                {
+                    Message = $"This account has been locked.",
+                };
             }
 
-            if (await _userManager.CheckPasswordAsync(user, request.Password))
+            if (!await _userManager.CheckPasswordAsync(user, request.Password))
             {
-                var jwtSecurityToken = await _jwtFactory.GenerateEncodedAccessToken(user);
-                if (user.RefreshTokens.Any(a => a.IsActive))
+                return new AuthResponse()
                 {
-                    var activeRefreshToken = user.RefreshTokens.FirstOrDefault(a => a.IsActive);
-                    authResponse.RefreshToken = activeRefreshToken!.Token;
-                    authResponse.ExpiredAt = (activeRefreshToken.Expires - DateTimeOffset.UtcNow).Seconds;
-                }
-                else
-                {
-                    var refreshToken = _jwtFactory.GenerateRefreshToken();
-                    authResponse.RefreshToken = refreshToken.Token;
-                    authResponse.ExpiredAt = (refreshToken.Expires - DateTimeOffset.UtcNow).Seconds;
-                    user.RefreshTokens.Add(refreshToken);
-                    var updateResponse = await _userManager.UpdateAsync(user);
-                    if (!updateResponse.Succeeded)
-                    {
-                        _logger.LogWarning("Updating user with id {0} failed with reason {1}", user.Id, updateResponse.ToString());
-                        authResponse.Message = $"Failed to generate refresh token.";
-                    }
-                }
-
-                authResponse.Token = jwtSecurityToken.Token;
-                return authResponse;
+                    Message = $"Incorrect Credentials for user {user.Email}.",
+                };
             }
 
-            authResponse.Message = $"Incorrect Credentials for user {user.Email}.";
-            return authResponse;
+            var jwtSecurityToken = await _jwtFactory.GenerateEncodedAccessToken(user);
+            var activeRefreshToken = await _refreshTokenRepository.FilterOneAsync(e => e.IsActive);
+            if (activeRefreshToken != null)
+            {
+                return new AuthResponse()
+                {
+                    RefreshToken = activeRefreshToken!.Token,
+                    ExpiredAt = (activeRefreshToken.Expires - DateTimeOffset.UtcNow).Seconds,
+                    Token = jwtSecurityToken.Token,
+                };
+            }
+
+            return await RefreshTokenInternal(user);
         }
 
-        public async Task<AuthResponse> RefreshTokenAsync(string token)
+
+        private async Task<AuthResponse> RefreshTokenInternal(User user)
         {
-            var authenticationModel = new AuthResponse();
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == token));
-            if (user == null)
-            {
-                authenticationModel.Message = $"Token did not match any users.";
-                return authenticationModel;
-            }
-
-            var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
-
-            if (!refreshToken.IsActive)
-            {
-                authenticationModel.Message = $"Token Not Active.";
-                return authenticationModel;
-            }
-            refreshToken.Revoked = DateTime.UtcNow;
-
             var newRefreshToken = _jwtFactory.GenerateRefreshToken();
             user.RefreshTokens.Add(newRefreshToken);
             var updateResponse = await _userManager.UpdateAsync(user);
-            if (!updateResponse.Succeeded)
+            if (updateResponse.Succeeded)
             {
-                _logger.LogWarning("Updating user with id {0} failed with reason {1}", user.Id, updateResponse.ToString());
-                authenticationModel.Message = $"Failed to generate refresh token.";
+                return new AuthResponse()
+                {
+                    Token = (await _jwtFactory.GenerateEncodedAccessToken(user)).Token,
+                    RefreshToken = newRefreshToken.Token,
+                    ExpiredAt = (newRefreshToken.Expires - DateTimeOffset.UtcNow).Seconds,
+                };
             }
 
-            authenticationModel.Token = (await _jwtFactory.GenerateEncodedAccessToken(user)).Token;
-            authenticationModel.RefreshToken = newRefreshToken.Token;
-            authenticationModel.ExpiredAt = (refreshToken.Expires - DateTimeOffset.UtcNow).Seconds;
-            return authenticationModel;
+            _logger.LogWarning("Updating user with id {0} failed with reason {1}", user.Id, updateResponse.ToString());
+            return new AuthResponse()
+            {
+                Message = "Failed to generate refresh token.",
+            };
+
+        }
+        public async Task<AuthResponse> RefreshTokenAsync(string token)
+        {
+            var user = await _userRepository.GetUserWithActiveRefreshToken(token);
+            var revokeResponse = await RevokeTokenInternal(user, token);
+            if (revokeResponse != null)
+            {
+                return revokeResponse;
+            }
+
+            return await RefreshTokenInternal(user);
+        }
+
+
+        private async Task<AuthResponse> RevokeTokenInternal(User user, string token)
+        {
+            var refreshToken =
+                (await _refreshTokenRepository.FilterOneAsync(e => e.Token == token && e.IsActive == true));
+            if (refreshToken == null)
+            {
+                return new AuthResponse()
+                {
+                    Message = ErrorCode.RefreshTokenRevocationFailed.GetDescription(),
+                };
+            }
+            refreshToken.Revoked = _systemClock.UtcNow;
+            return null;
         }
 
         public async Task<AuthResponse> RevokeTokenAsync(string token)
         {
-            var authResponse = new AuthResponse();
-            authResponse.Message = ErrorCode.RefreshTokenRevocationFailed.GetDescription();
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == token));
-            if (user == null)
+            var user = await _userRepository.GetUserWithActiveRefreshToken(token);
+            var revokeResponse = await RevokeTokenInternal(user, token);
+            if (revokeResponse != null)
             {
-                return authResponse;
+                return revokeResponse;
             }
-            var refreshToken = user.RefreshTokens.First(x => x.Token == token);
-            if (!refreshToken.IsActive)
-            {
-                return authResponse;
-            }
-            refreshToken.Revoked = DateTimeOffset.UtcNow;
             var updateResponse = await _userManager.UpdateAsync(user);
-            if (!updateResponse.Succeeded)
+            if (updateResponse.Succeeded)
             {
-                _logger.LogWarning("Updating user with id {0} failed with reason {1}", user.Id, updateResponse.ToString());
-                return authResponse;
+                return new AuthResponse()
+                {
+                    Message = "Token revoked successfully"
+                };
             }
 
-            authResponse.Message = "Token revoked successfully";
-            return authResponse;
-        }
+            _logger.LogWarning("Updating user with id {0} failed with reason {1}", user.Id, updateResponse.ToString());
+            return new AuthResponse()
+            {
+                Message = ErrorCode.RefreshTokenRevocationFailed.GetDescription(),
+            };
 
+        }
     }
 }

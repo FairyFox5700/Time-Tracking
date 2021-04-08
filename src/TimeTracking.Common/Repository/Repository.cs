@@ -10,7 +10,7 @@ using TimeTracking.Common.Pagination;
 namespace TimeTracking.Common.Repository
 {
     public abstract class Repository<TKey, TEntity, TContext> : IRepository<TKey, TEntity> where TEntity : class
-        where TContext : DbContext,IDbContext
+        where TContext : DbContext, IDbContext
     {
         protected readonly TContext _dbContext;
         protected readonly DbSet<TEntity> _dbSet;
@@ -74,7 +74,18 @@ namespace TimeTracking.Common.Repository
             return await _dbContext.Set<TEntity>().CountAsync();
         }
 
-        public IEnumerable<TEntity> Filter(Expression<Func<TEntity, bool>> filter = null,
+        public async Task<TEntity> FilterOneAsync(Expression<Func<TEntity, bool>> filter = null)
+        {
+            IQueryable<TEntity> query = _dbContext.Set<TEntity>();
+            if (filter != null)
+            {
+                query = query.Where(filter);
+            }
+
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<IEnumerable<TEntity>> Filter(Expression<Func<TEntity, bool>> filter = null,
             Func<IQueryable<TEntity>,
                 IOrderedQueryable<TEntity>> orderBy = null,
             string includeProperties = "",
@@ -106,14 +117,14 @@ namespace TimeTracking.Common.Repository
                 query = query.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
             }
 
-            return query.ToList();
+            return await query.ToListAsync();
         }
 
 
-        public bool Exist(Expression<Func<TEntity, bool>> predicate)
+        public async Task<bool> Exist(Expression<Func<TEntity, bool>> predicate)
         {
             var exist = _dbContext.Set<TEntity>().Where(predicate);
-            return exist.Any();
+            return await exist.AnyAsync();
         }
     }
 }

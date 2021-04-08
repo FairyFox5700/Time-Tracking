@@ -9,4 +9,9 @@
       <PackageReference Include="MicroElements.Swashbuckle.FluentValidation.WebApi" Version="0.1.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\..\TimeTracking.Common\TimeTracking.Common.csproj" />
+      <ProjectReference Include="..\TimeTracking.Identity.Entities\TimeTracking.Identity.Entities.csproj" />
+    </ItemGroup>
+
 </Project>

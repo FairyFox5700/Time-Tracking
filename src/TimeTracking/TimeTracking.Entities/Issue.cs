@@ -7,6 +7,7 @@ namespace TimeTracking.Entities
 {
     public class Issue : IKeyEntity<Guid>, IAuditable
     {
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }

@@ -57,7 +57,7 @@ namespace TimeTracking.Bl.Impl.Services
                 var entityToAdd = _milestoneMapper.MapToEntity(dto);
                 entityToAdd.CreatedByUserId = _userProvider.GetUserId();
                 entityToAdd = await _milestoneRepository.AddAsync(entityToAdd);
-                if (entityToAdd != null) return new ApiResponse<MilestoneDto>(_milestoneDetailsMapper.MapToModel(entityToAdd));
+                if (entityToAdd != null) return new ApiResponse<MilestoneDto>(_milestoneMapper.MapToModel(entityToAdd));
                 _logger.LogWarning("Failed to create milestone entity {0}", JsonConvert.SerializeObject(dto));
                 return new ApiResponse<MilestoneDto>()
                 {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -20,6 +21,11 @@ namespace TimeTracking.Entities
         public Guid? TeamId { get; set; }
         [ForeignKey(nameof(TeamId))]
         public Team Team { get; set; }
+
+        public ICollection<WorkLog> WorkLogs { get; set; }
+        public ICollection<Issue> ReportedIssues { get; set; }
+        public ICollection<Issue> AssignedIssues { get; set; }
+        public ICollection<Milestone> CreatedMilestones { get; set; }
         #endregion
     }
 }

@@ -94,9 +94,9 @@ namespace TimeTracking.Bl.Impl.Services
                     UserName = userFoundResponse.Data.FirstName,
                     UserSurname = userFoundResponse.Data.LastName,
                     UserEmail = userFoundResponse.Data.Email,
-                    ProjectName = workLogActivities.Select(e => e.Issue.Project.Name).FirstOrDefault(),
-                    TotalWorkLogInSeconds = (long)workLogActivities.Sum(e => e.TimeSpent.TotalSeconds),
-                    WorkLogItems = workLogActivities.Select(e => _worklogDetailsMapper.MapToModel(e)).ToList(),
+                    ProjectName = workLogActivities?.Select(e => e.Issue?.Project?.Name).FirstOrDefault(),
+                    TotalWorkLogInSeconds = (long?)workLogActivities?.Sum(e => e.TimeSpent.TotalSeconds),
+                    WorkLogItems = workLogActivities?.Select(e => _worklogDetailsMapper.MapToModel(e)).ToList(),
                 };
                 return new ApiResponse<UserActivityDto>(userActivity);
             }
@@ -110,8 +110,7 @@ namespace TimeTracking.Bl.Impl.Services
         public async Task<ApiPagedResponse<WorkLogDetailsDto>> GetAllWorkLogsPaged(PagedRequest pagedRequest)
         {
             var listOfRecords = await _worklogRepository.GetAllPagedAsync(pagedRequest.Page, pagedRequest.PageSize);
-            return new ApiPagedResponse<WorkLogDetailsDto>().FromPagedResult(listOfRecords,
-                _worklogDetailsMapper.MapToModel);
+            return new ApiPagedResponse<WorkLogDetailsDto>().FromPagedResult(listOfRecords, _worklogDetailsMapper.MapToModel);
         }
 
 
@@ -145,21 +144,25 @@ namespace TimeTracking.Bl.Impl.Services
         }
         public async Task<ApiResponse<WorkLogDto>> GetWorkLog(Guid workLogId)
         {
-
-            var workLog = await _worklogRepository.GetByIdAsync(workLogId);
-            if (workLog == null)
+            try
             {
-                return new ApiResponse<WorkLogDto>()
+                var workLog = await _worklogRepository.GetByIdAsync(workLogId);
+                if (workLog == null)
                 {
-                    StatusCode = 400,
-                    IsSuccess = false,
-                    ResponseException = new ApiError(ErrorCode.WorkLogNotFound, ErrorCode.WorkLogNotFound.GetDescription())
-                };
-            }
-            else
-            {
+                    return new ApiResponse<WorkLogDto>()
+                    {
+                        StatusCode = 400,
+                        IsSuccess = false,
+                        ResponseException = new ApiError(ErrorCode.WorkLogNotFound, ErrorCode.WorkLogNotFound.GetDescription())
+                    };
+                }
                 var workLogDto = _worklogMapper.MapToModel(workLog);
                 return new ApiResponse<WorkLogDto>(workLogDto);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "An error occured while getting worklog by id {0} ", workLogId);
+                return ApiResponse<WorkLogDto>.InternalError();
             }
         }
 
@@ -202,7 +205,7 @@ namespace TimeTracking.Bl.Impl.Services
                 if (workLogFound == null)
                 {
                     _logger.LogWarning("Worklog by id {0} was not found in database", workLogId);
-                    return new ApiResponse<WorkLogDto>()
+                    return new ApiResponse()
                     {
                         StatusCode = 400,
                         IsSuccess = false,

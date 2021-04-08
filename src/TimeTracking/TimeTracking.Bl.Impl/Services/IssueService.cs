@@ -54,15 +54,13 @@ namespace TimeTracking.Bl.Impl.Services
             try
             {
                 var entityToAdd = _issueMapper.MapToEntity(dto);
-                if (dto.MilestoneId != null)
+                if (dto.MilestoneId.HasValue)
                 {
                     var mileStoneFoundResponse = await _mileStoneService.GetMileStoneById(dto.MilestoneId.Value);
                     if (!mileStoneFoundResponse.IsSuccess)
                     {
                         return mileStoneFoundResponse.ToFailed<IssueDto>();
                     }
-
-                    entityToAdd.MilestoneId = dto.MilestoneId;
                 }
 
                 var projectFindResponse = await _projectService.GetProjectByIdAsync(dto.ProjectId);
@@ -93,7 +91,7 @@ namespace TimeTracking.Bl.Impl.Services
             }
         }
 
-        public async Task<ApiResponse> AssignIssueToUser(AssignIssueToUserRequest request)
+        public async Task<ApiResponse<IssueDto>> AssignIssueToUser(AssignIssueToUserRequest request)
         {
             try
             {
@@ -112,7 +110,7 @@ namespace TimeTracking.Bl.Impl.Services
                 var userFoundResponse = await _userService.GetUsersById(request.UserId);
                 if (!userFoundResponse.IsSuccess)
                 {
-                    return userFoundResponse;
+                    return userFoundResponse.ToFailed<IssueDto>();
                 }
 
                 entityFound.AssignedToUserId = request.UserId;
@@ -155,6 +153,7 @@ namespace TimeTracking.Bl.Impl.Services
             }
         }
 
+
         private Issue ChangeEntityByStatus(Status status, Issue issue)
         {
             switch (status)
@@ -193,9 +192,9 @@ namespace TimeTracking.Bl.Impl.Services
                     return new ApiResponse<IssueDetailsDto>(issueDetailed);
                 }
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.LogWarning(e, "An error occured while getting issue by id {0} ", issueId);
+                _logger.LogWarning(ex, "An error occured while getting issue by id {0} ", issueId);
                 return ApiResponse<IssueDetailsDto>.InternalError();
             }
         }

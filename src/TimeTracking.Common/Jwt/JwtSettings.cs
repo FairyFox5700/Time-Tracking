@@ -13,7 +13,9 @@ namespace TimeTracking.Common.Jwt
         public TimeSpan AccessTokenValidFor { get; set; } = TimeSpan.FromMinutes(120 * 3);
         public TimeSpan RefreshTokenValidFor { get; set; } = TimeSpan.FromMinutes(120);
         public DateTime NotBefore => DateTime.UtcNow;
-        public Func<Task<string>> JtiGenerator =>
-            () => Task.FromResult(Guid.NewGuid().ToString());
+        public virtual Func<Task<string>> JtiGenerator
+        {
+            get => () => Task.FromResult(Guid.NewGuid().ToString());
+        }
     }
 }

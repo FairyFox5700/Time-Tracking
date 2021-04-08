@@ -14,11 +14,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\TimeTracking.Common\TimeTracking.Common.csproj" />
+      <ProjectReference Include="..\TimeTracking.Identity.Dal.Abstract\TimeTracking.Identity.Dal.Abstract.csproj" />
       <ProjectReference Include="..\TimeTracking.Identity.Entities\TimeTracking.Identity.Entities.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Repositories" />
     </ItemGroup>
 
 </Project>

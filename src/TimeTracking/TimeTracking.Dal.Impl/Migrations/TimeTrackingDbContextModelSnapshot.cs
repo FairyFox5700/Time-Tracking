@@ -40,16 +40,10 @@ namespace TimeTracking.Dal.Impl.Migrations
                     b.Property<Guid?>("MilestoneId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("MilestoneId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTimeOffset>("OpenedAt")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ProjectId1")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ReportedByUserId")
@@ -67,22 +61,13 @@ namespace TimeTracking.Dal.Impl.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssignedToUserId")
-                        .IsUnique()
-                        .HasFilter("[AssignedToUserId] IS NOT NULL");
+                    b.HasIndex("AssignedToUserId");
 
-                    b.HasIndex("MilestoneId")
-                        .IsUnique()
-                        .HasFilter("[MilestoneId] IS NOT NULL");
-
-                    b.HasIndex("MilestoneId1");
+                    b.HasIndex("MilestoneId");
 
                     b.HasIndex("ProjectId");
 
-                    b.HasIndex("ProjectId1");
-
-                    b.HasIndex("ReportedByUserId")
-                        .IsUnique();
+                    b.HasIndex("ReportedByUserId");
 
                     b.ToTable("Issues");
                 });
@@ -111,12 +96,6 @@ namespace TimeTracking.Dal.Impl.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProjectId1")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProjectId2")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("State")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -129,12 +108,9 @@ namespace TimeTracking.Dal.Impl.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedByUserId")
-                        .IsUnique();
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Milestones");
                 });
@@ -181,14 +157,9 @@ namespace TimeTracking.Dal.Impl.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProjectId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Teams");
                 });
@@ -243,12 +214,6 @@ namespace TimeTracking.Dal.Impl.Migrations
                     b.Property<Guid>("IssueId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("IssueId1")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("IssueId2")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTimeOffset>("StartDate")
                         .HasColumnType("datetimeoffset");
 
@@ -265,8 +230,6 @@ namespace TimeTracking.Dal.Impl.Migrations
 
                     b.HasIndex("IssueId");
 
-                    b.HasIndex("IssueId1");
-
                     b.HasIndex("UserId");
 
                     b.ToTable("WorkLogs");
@@ -275,90 +238,69 @@ namespace TimeTracking.Dal.Impl.Migrations
             modelBuilder.Entity("TimeTracking.Entities.Issue", b =>
                 {
                     b.HasOne("TimeTracking.Entities.TimeTrackingUser", "TimeTrackingUserAssigned")
-                        .WithOne()
-                        .HasForeignKey("TimeTracking.Entities.Issue", "AssignedToUserId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .WithMany("AssignedIssues")
+                        .HasForeignKey("AssignedToUserId");
 
                     b.HasOne("TimeTracking.Entities.Milestone", "Milestone")
-                        .WithOne()
-                        .HasForeignKey("TimeTracking.Entities.Issue", "MilestoneId");
-
-                    b.HasOne("TimeTracking.Entities.Milestone", null)
                         .WithMany("Issues")
-                        .HasForeignKey("MilestoneId1");
+                        .HasForeignKey("MilestoneId");
 
                     b.HasOne("TimeTracking.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("Issues")
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TimeTracking.Entities.Project", null)
-                        .WithMany("Issues")
-                        .HasForeignKey("ProjectId1");
-
                     b.HasOne("TimeTracking.Entities.TimeTrackingUser", "TimeTrackingUserReporter")
-                        .WithOne()
-                        .HasForeignKey("TimeTracking.Entities.Issue", "ReportedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .WithMany("ReportedIssues")
+                        .HasForeignKey("ReportedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("TimeTracking.Entities.Milestone", b =>
                 {
                     b.HasOne("TimeTracking.Entities.TimeTrackingUser", "CreatedByUser")
-                        .WithOne()
-                        .HasForeignKey("TimeTracking.Entities.Milestone", "CreatedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("TimeTracking.Entities.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
+                        .WithMany("CreatedMilestones")
+                        .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TimeTracking.Entities.Project", null)
+                    b.HasOne("TimeTracking.Entities.Project", "Project")
                         .WithMany("Milestones")
-                        .HasForeignKey("ProjectId1");
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TimeTracking.Entities.Team", b =>
                 {
                     b.HasOne("TimeTracking.Entities.Project", "Project")
-                        .WithMany()
+                        .WithMany("Teams")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("TimeTracking.Entities.Project", null)
-                        .WithMany("Teams")
-                        .HasForeignKey("ProjectId1");
                 });
 
             modelBuilder.Entity("TimeTracking.Entities.TimeTrackingUser", b =>
                 {
                     b.HasOne("TimeTracking.Entities.Team", "Team")
-                        .WithMany()
+                        .WithMany("Users")
                         .HasForeignKey("TeamId");
                 });
 
             modelBuilder.Entity("TimeTracking.Entities.WorkLog", b =>
                 {
                     b.HasOne("TimeTracking.Entities.Issue", "Issue")
-                        .WithMany()
+                        .WithMany("WorkLogs")
                         .HasForeignKey("IssueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TimeTracking.Entities.Issue", null)
-                        .WithMany("WorkLogs")
-                        .HasForeignKey("IssueId1");
-
                     b.HasOne("TimeTracking.Entities.TimeTrackingUser", "TimeTrackingUser")
-                        .WithMany()
+                        .WithMany("WorkLogs")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618
